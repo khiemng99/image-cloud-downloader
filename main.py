@@ -2,7 +2,7 @@
 
 Currently supported:
     - cyberdrop.cr / cyberdrop.me  (album:  /a/<id>)
-    - filester.me                  (folder: /f/<id>, single file: /d/<slug>)
+    - filester.me / filester.gg    (folder: /f/<id>, single file: /d/<slug>)
     - bunkr.site (and mirrors)     (album:  /a/<id>, single file: /f/<slug>)
     - jpg6.su                      (user/album listing, e.g. /<username>)
 

@@ -14,16 +14,17 @@ from ..core import FileEntry, Listing, ResolveFn, SiteHandler, register
 
 class FilesterHandler(SiteHandler):
     name = "filester"
+    SUPPORTED_HOSTS = ("filester.me", "filester.gg")
     CDN_HOSTS = (
-        "https://cache1.filester.me",
-        "https://cache6.filester.me",
-        "https://cn1.filester.me",
+        # "https://cache1.filester.me",
+        # "https://cache6.filester.me",
+        "https://cn1.filester.me/v2",
     )
 
     @staticmethod
     def matches(url: str) -> bool:
         host = (urlparse(url).hostname or "").lower()
-        return host.endswith("filester.me")
+        return any(host.endswith(supported) for supported in FilesterHandler.SUPPORTED_HOSTS)
 
     @staticmethod
     def _origin(url: str) -> str:

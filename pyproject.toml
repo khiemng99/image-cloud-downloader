@@ -6,5 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     "beautifulsoup4>=4.15.0",
     "httpx>=0.28.1",
+    "ipykernel>=7.3.0",
+    "requests>=2.34.2",
     "tqdm>=4.68.2",
 ]

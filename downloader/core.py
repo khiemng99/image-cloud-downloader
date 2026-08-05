@@ -16,6 +16,7 @@ class FileEntry:
     name: str
     size: int  # 0 if unknown
     resolve: ResolveFn  # late-binds the actual CDN URL
+    subdir: str = ""  # relative path (may contain "/") under the listing dir; "" = top level
 
 
 @dataclass

@@ -5,6 +5,9 @@ Currently supported:
     - filester.me / filester.gg    (folder: /f/<id>, single file: /d/<slug>)
     - bunkr.site (and mirrors)     (album:  /a/<id>, single file: /f/<slug>)
     - jpg6.su                      (user/album listing, e.g. /<username>)
+    - pixeldrain.com (and mirrors) (list: /l/<id>, single file: /u/<id>)
+    - drive.google.com             (public shared folder: /drive/folders/<id>)
+                                    images/videos only; needs GOOGLE_API_KEY env var
 
 Usage:
     uv run main.py <url> [<url> ...] [-o OUTPUT_DIR] [-c CONCURRENCY]
@@ -18,12 +21,16 @@ import asyncio
 import sys
 from pathlib import Path
 
-from downloader import run
+from downloader import config, run
 from downloader.utils import read_urls_file
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Multi-site downloader (cyberdrop, filester, bunkr, jpg6).")
+    config.load_env()
+
+    p = argparse.ArgumentParser(
+        description="Multi-site downloader (cyberdrop, filester, bunkr, jpg6, pixeldrain, gdrive)."
+    )
     p.add_argument("urls", nargs="*", help="Album/folder/file URL(s)")
     p.add_argument("-f", "--file", help="Path to a text file with one URL per line (# comments allowed)")
     p.add_argument("-o", "--output", default="downloads", help="Output directory (default: downloads)")

@@ -9,6 +9,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from ..core import FileEntry, Listing, ResolveFn, SiteHandler, register
+from ..utils import attr
 
 _SIZE_RE = re.compile(r"^\s*([\d.]+)\s*([KMGT]?B)\s*$", re.IGNORECASE)
 _UNIT = {"B": 1, "KB": 1024, "MB": 1024**2, "GB": 1024**3, "TB": 1024**4}
@@ -46,9 +47,9 @@ class BunkrHandler(SiteHandler):
             r.raise_for_status()
             soup = BeautifulSoup(r.text, "html.parser")
             dl_link = soup.select_one('a[href*="/file/"]')
-            if not dl_link or not dl_link.get("href"):
+            dl_url = attr(dl_link, "href")
+            if not dl_url:
                 raise RuntimeError(f"no download link for {slug}")
-            dl_url = dl_link["href"]
             m = re.search(r"/file/(\d+)", dl_url)
             if not m:
                 raise RuntimeError(f"unparseable download url: {dl_url}")
@@ -83,7 +84,7 @@ class BunkrHandler(SiteHandler):
         soup = BeautifulSoup(r.text, "html.parser")
 
         og_title = soup.find("meta", attrs={"property": "og:title"})
-        title = (og_title.get("content") if og_title else None) or "bunkr"
+        title = attr(og_title, "content") or "bunkr"
 
         if path.startswith("/f/"):
             slug = path.split("/f/", 1)[1].strip("/").split("/")[0]
@@ -91,9 +92,7 @@ class BunkrHandler(SiteHandler):
             size = _parse_size(size_el.get_text(strip=True)) if size_el else 0
             return Listing(
                 title=title,
-                files=[
-                    FileEntry(name=title, size=size, resolve=self._make_resolver(origin, slug))
-                ],
+                files=[FileEntry(name=title, size=size, resolve=self._make_resolver(origin, slug))],
             )
 
         if not path.startswith("/a/"):
@@ -105,7 +104,7 @@ class BunkrHandler(SiteHandler):
             link = item.select_one('a[href^="/f/"]')
             if not link:
                 continue
-            m = re.match(r"^/f/([A-Za-z0-9_-]+)", link.get("href", ""))
+            m = re.match(r"^/f/([A-Za-z0-9_-]+)", attr(link, "href"))
             if not m:
                 continue
             slug = m.group(1)
@@ -113,12 +112,10 @@ class BunkrHandler(SiteHandler):
                 continue
             seen.add(slug)
             name_el = item.select_one(".theName")
-            name = name_el.get_text(strip=True) if name_el else (item.get("title") or slug)
+            name = name_el.get_text(strip=True) if name_el else (attr(item, "title") or slug)
             size_el = item.select_one(".theSize")
             size = _parse_size(size_el.get_text(strip=True)) if size_el else 0
-            entries.append(
-                FileEntry(name=name, size=size, resolve=self._make_resolver(origin, slug))
-            )
+            entries.append(FileEntry(name=name, size=size, resolve=self._make_resolver(origin, slug)))
         return Listing(title=title, files=entries)
 
 

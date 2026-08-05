@@ -8,3 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Local secrets / config
+.env
+
+.tmp
+
+CLAUDE.md

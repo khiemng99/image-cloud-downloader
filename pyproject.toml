@@ -6,7 +6,92 @@ requires-python = ">=3.11"
 dependencies = [
     "beautifulsoup4>=4.15.0",
     "httpx>=0.28.1",
-    "ipykernel>=7.3.0",
+    "python-dotenv>=1.2.2",
     "requests>=2.34.2",
     "tqdm>=4.68.2",
 ]
+
+[tool.pdm]
+distribution = false
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.1",
+    "ipykernel>=7.3.0",
+]
+
+[tool.ruff]
+exclude = [
+    ".venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".git",
+    ".tox",
+    "build",
+    "dist",
+    "node_modules",
+    "notebook",
+]
+line-length = 120
+indent-width = 4
+output-format = "grouped"
+target-version = "py312"
+fix = true
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # pyflakes
+    "I", # isort
+    "B", # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "N", # PEP8 naming convetions
+]
+ignore = [
+    "C901", # too complex
+    "W191", # indentation contains tabs
+    "D401", # imperative mood
+    "E501", # line too long
+    "B008", # perform fucntion call in argument defaults
+    "N806", # variable names should be lowercase
+]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.extend-per-file-ignores]
+"__init__.py" = ["F401"]
+"*.ipynb" = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+exclude = ["^\\.venv/", "^build/", "^dist/", "^notebook/"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[[tool.mypy.overrides]]
+# tqdm ships no type information; `types-tqdm` would work too if you'd rather check it.
+module = ["tqdm.*"]
+ignore_missing_imports = true
+
+[tool.pylint]
+max-line-length = 120
+disable = [
+    "missing-class-docstring",    # ruff's lint.select omits "D"; modules carry the docs
+    "missing-function-docstring", # ditto
+    "duplicate-code",             # per-site handlers repeat small helpers by design
+]
+
+[tool.pylint.design]
+# Scrapers and the download pipeline legitimately juggle more state than the defaults allow.
+max-args = 7
+max-positional-arguments = 7
+max-locals = 20

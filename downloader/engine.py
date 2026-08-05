@@ -13,7 +13,9 @@ from .core import FileEntry, detect_handler
 from .utils import USER_AGENT, sanitize
 
 
-async def download_one(
+async def download_one(  # pylint: disable=too-many-locals
+    # Splitting this would spread the .part/dest/progress bookkeeping across helpers
+    # that all need the same state; it is clearer as one linear function.
     client: httpx.AsyncClient,
     entry: FileEntry,
     out_dir: Path,
@@ -23,18 +25,26 @@ async def download_one(
 ) -> tuple[str, str | None]:
     async with sem:
         name = sanitize(entry.name)
-        dest = out_dir / name
+        target_dir = out_dir
+        for segment in entry.subdir.split("/"):
+            if segment.strip():
+                target_dir = target_dir / sanitize(segment)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        dest = target_dir / name
+        rel_name = str(dest.relative_to(out_dir))
 
         if dest.exists() and entry.size and dest.stat().st_size == entry.size:
             files_bar.update(1)
             bytes_bar.update(entry.size)
-            return name, None
+            return rel_name, None
 
         try:
             cdn_url = await entry.resolve(client)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            # Handler resolvers hit arbitrary third-party APIs; one bad file must be
+            # reported and skipped, never abort the rest of the listing.
             files_bar.update(1)
-            return name, f"resolve error: {e}"
+            return rel_name, f"resolve error: {e}"
 
         tmp = dest.with_suffix(dest.suffix + ".part")
         downloaded = 0
@@ -42,31 +52,36 @@ async def download_one(
             async with client.stream("GET", cdn_url) as resp:
                 resp.raise_for_status()
                 total = int(resp.headers.get("content-length") or entry.size or 0)
-                with tmp.open("wb") as fh, tqdm(
-                    total=total or None,
-                    unit="B",
-                    unit_scale=True,
-                    unit_divisor=1024,
-                    desc=name[:40],
-                    leave=False,
-                ) as bar:
+                with (
+                    tmp.open("wb") as fh,
+                    tqdm(
+                        total=total or None,
+                        unit="B",
+                        unit_scale=True,
+                        unit_divisor=1024,
+                        desc=name[:40],
+                        leave=False,
+                    ) as file_bar,
+                ):
                     async for chunk in resp.aiter_bytes(64 * 1024):
                         fh.write(chunk)
                         n = len(chunk)
                         downloaded += n
-                        bar.update(n)
+                        file_bar.update(n)
                         bytes_bar.update(n)
             tmp.replace(dest)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            # Same contract as above, plus this branch owns .part cleanup and progress
+            # rollback, which must run for any transport, filesystem or decode failure.
             if tmp.exists():
                 tmp.unlink(missing_ok=True)
             files_bar.update(1)
             if downloaded:
                 bytes_bar.update(-downloaded)
-            return name, f"download error: {e}"
+            return rel_name, f"download error: {e}"
 
         files_bar.update(1)
-        return name, None
+        return rel_name, None
 
 
 async def process_url(
@@ -84,7 +99,9 @@ async def process_url(
     print(f"\n[*] [{handler.name}] {url}")
     try:
         listing = await handler.list_files(client, url)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        # A site changing its markup or API should cost this source only; remaining
+        # URLs in the run still get processed.
         print(f"[!] Failed to list {url}: {e}", file=sys.stderr)
         return 0, 1
 
@@ -112,10 +129,7 @@ async def process_url(
         ) as bytes_bar,
     ):
         results = await asyncio.gather(
-            *(
-                download_one(client, e, out_dir, sem, files_bar, bytes_bar)
-                for e in listing.files
-            )
+            *(download_one(client, e, out_dir, sem, files_bar, bytes_bar) for e in listing.files)
         )
 
     for name, err in results:

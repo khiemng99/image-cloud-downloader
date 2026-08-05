@@ -10,6 +10,7 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from ..core import FileEntry, Listing, SiteHandler, register
+from ..utils import attr
 
 
 class CyberdropHandler(SiteHandler):
@@ -41,7 +42,7 @@ class CyberdropHandler(SiteHandler):
         slugs: list[str] = []
         seen: set[str] = set()
         for a in soup.select('a[href^="/f/"]'):
-            m = re.match(r"^/f/([A-Za-z0-9_-]+)", a.get("href", ""))
+            m = re.match(r"^/f/([A-Za-z0-9_-]+)", attr(a, "href"))
             if m and m.group(1) not in seen:
                 seen.add(m.group(1))
                 slugs.append(m.group(1))
@@ -52,7 +53,9 @@ class CyberdropHandler(SiteHandler):
                 resp = await client.get(f"{api}/api/file/info/{slug}")
                 resp.raise_for_status()
                 info = resp.json()
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
+                # Individual slugs go missing or return malformed JSON; skip them so the
+                # rest of the album still lists.
                 continue
 
             auth_url = info["auth_url"]

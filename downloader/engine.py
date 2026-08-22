@@ -13,6 +13,13 @@ from .core import FileEntry, detect_handler
 from .utils import USER_AGENT, sanitize
 
 
+def _describe(e: BaseException) -> str:
+    # httpx transport errors (ConnectTimeout, ConnectError, ReadTimeout) often stringify
+    # to "", which reaches the user as a bare "download error:" with no cause at all.
+    text = str(e).strip()
+    return f"{type(e).__name__}: {text}" if text else type(e).__name__
+
+
 async def download_one(  # pylint: disable=too-many-locals
     # Splitting this would spread the .part/dest/progress bookkeeping across helpers
     # that all need the same state; it is clearer as one linear function.
@@ -44,7 +51,7 @@ async def download_one(  # pylint: disable=too-many-locals
             # Handler resolvers hit arbitrary third-party APIs; one bad file must be
             # reported and skipped, never abort the rest of the listing.
             files_bar.update(1)
-            return rel_name, f"resolve error: {e}"
+            return rel_name, f"resolve error: {_describe(e)}"
 
         tmp = dest.with_suffix(dest.suffix + ".part")
         downloaded = 0
@@ -78,7 +85,7 @@ async def download_one(  # pylint: disable=too-many-locals
             files_bar.update(1)
             if downloaded:
                 bytes_bar.update(-downloaded)
-            return rel_name, f"download error: {e}"
+            return rel_name, f"download error: {_describe(e)}"
 
         files_bar.update(1)
         return rel_name, None

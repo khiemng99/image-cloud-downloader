@@ -14,6 +14,7 @@ from dotenv import find_dotenv, load_dotenv
 # Env var names.
 GOOGLE_API_KEY_ENV = "GOOGLE_API_KEY"
 FILESTER_API_KEY_ENV = "FILESTER_API_KEY"
+GOFILE_API_TOKEN_ENV = "GOFILE_API_TOKEN"
 
 _loaded = False  # pylint: disable=invalid-name  # mutable module state, not a constant
 
@@ -44,3 +45,8 @@ def google_api_key() -> str:
 def filester_api_key() -> str:
     """Filester API key (sent as a Bearer token), or an empty string if unset."""
     return get(FILESTER_API_KEY_ENV)
+
+
+def gofile_api_token() -> str:
+    """Gofile account API token (sent as a Bearer token), or an empty string if unset."""
+    return get(GOFILE_API_TOKEN_ENV)
